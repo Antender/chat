@@ -1,0 +1,77 @@
+package require Tk 
+
+set settings [read [set fid [open main.cfg r]]]
+close $fid
+if {[regexp -nocase -- {(server_port=).+?(;)} $settings server_port]} {set server_port [string range $server_port 12 end-1]} {set server_port 31282} 
+
+set connection {}
+socket -server {accept} $server_port 
+
+proc accept {connection ip port} {
+	set ::connection $connection
+	set ::adress $ip:$port
+	fconfigure $::connection -buffering line	
+	fileevent $::connection readable {read_socket}
+	.answer insert end "\nConnected to you: $ip:$port"
+	.net configure -text Disconnect -command {disconnect}
+}
+
+proc connect {} {
+	set delimiter [string first : $::adress]
+	set ip [string range $::adress 0 [expr $delimiter-1]]
+	set port [string range $::adress [expr $delimiter+1] end]
+	set ::connection [socket $ip $port]
+	fconfigure $::connection -buffering line	
+	fileevent $::connection readable {read_socket}
+	.answer insert end "\nYou connected to: $ip:$port"
+	.net configure -text Disconnect -command {disconnect}
+}
+
+proc disconnect {} {
+	close $::connection
+	set adress {}
+	set connection {}
+	.net configure -text Connect -command {connect}
+}
+
+proc send_text {} {
+	if {$::connection!={}} {
+		puts $::connection [.message get 1.0 end]
+		.answer insert end [.message get 1.0 end]
+		.message delete 1.0 end
+	}
+}
+proc read_socket {} {
+   if {[eof $::connection] || [catch {gets $::connection line}]} {
+		close $::connection
+		.answer insert end "\nRemote computer disconnected"
+		set ::adress {}
+		set ::connection {}
+		.net configure -text Connect -command {connect}
+   } else {
+		.answer insert end "\n$line"
+   }
+}
+
+set adress "127.0.0.1:$server_port"
+font create chat_font -family Courier -size 12
+entry     .adress      -textvariable adress -state normal
+button    .net         -text Connect -command {connect}
+text      .answer      -yscrollcommand {.sb_answer set} -font chat_font -setgrid true -height 1 -width 10
+scrollbar .sb_answer   -command {.answer yview}
+label     .port        -text "Your port:\n$server_port"
+text      .message     -yscrollcommand {.sb_message set} -font chat_font -setgrid true -height 1 -width 10
+scrollbar .sb_message  -command {.message yview}
+button    .send        -text Send -command {send_text}
+label     .l_clients
+listbox   .lb_clients
+scrollbar .sb_clients
+
+grid .adress  .net        -     -sticky nesw
+grid .answer  .sb_answer  .port -sticky nesw
+grid .message .sb_message .send -sticky nesw
+grid columnconfigure . 0 -weight 1
+grid rowconfigure    . 1 -weight 3
+grid rowconfigure    . 2 -weight 1
+
+tkwait window .

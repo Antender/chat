@@ -1,0 +1,21 @@
+font create chat_font -family Courier -size 12
+entry     .adress      -textvariable adress -state normal
+button    .net         -text Подсоединиться -command {connect}
+text      .answer      -yscrollcommand {.sb_answer set} -font chat_font -setgrid true -height 1 -width 10
+scrollbar .sb_answer   -command {.answer yview}
+label     .port        -text "Ваш порт:\n$server_port"
+text      .message     -yscrollcommand {.sb_message set} -font chat_font -setgrid true -height 1 -width 10
+scrollbar .sb_message  -command {.message yview}
+button    .send        -text Отправить -command {send_text}
+label     .l_clients
+listbox   .lb_clients
+scrollbar .sb_clients
+
+grid .adress  .net        -     -sticky nesw
+grid .answer  .sb_answer  .port -sticky nesw
+grid .message .sb_message .send -sticky nesw
+grid columnconfigure . 0 -weight 1
+grid rowconfigure    . 1 -weight 3
+grid rowconfigure    . 2 -weight 1
+
+tkwait window .
